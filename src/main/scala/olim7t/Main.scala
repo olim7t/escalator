@@ -1,8 +1,18 @@
 package olim7t
 
-import spray.can.server.SprayCanHttpServerApp
-import akka.actor.Props
+import akka.actor.{ActorLogging, Actor, Props}
 import com.typesafe.config.ConfigFactory
+import spray.routing.HttpServiceActor
+import spray.can.server.SprayCanHttpServerApp
+
+/** Bind everything together */
+class RestInterface extends Actor
+                    with ActorLogging
+                    with HttpServiceActor
+                    with ActorBackend
+                    with RestApi {
+  def receive = runRoute(routes)
+}
 
 object Main extends App with SprayCanHttpServerApp {
   val config = ConfigFactory.load()
