@@ -34,11 +34,11 @@ class RestApiSpec extends RestApi
     "Delegate events to the backend" in {
       Get("/call?atFloor=0&to=UP") ~> routes ~> check {
         status must be === OK
-        lastEvent must be === Some(CallUp(0))
+        lastEvent must be === Some(Call(0, Up))
       }
       Get("/call?atFloor=2&to=DOWN") ~> routes ~> check {
         status must be === OK
-        lastEvent must be === Some(CallDown(2))
+        lastEvent must be === Some(Call(2, Down))
       }
       Get("/go?floorToGo=4") ~> routes ~> check {
         status must be === OK

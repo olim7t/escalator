@@ -19,8 +19,8 @@ trait RestApi extends HttpService { self: Backend =>
       import shapeless.{::, HNil}
       type EventRoute = Directive[Event :: HNil]
 
-      val callUp: EventRoute = (path("call") & parameters('atFloor, 'to ! "UP")).as(CallUp)
-      val callDown: EventRoute = (path("call") & parameters('atFloor, 'to ! "DOWN")).as(CallDown)
+      val callUp: EventRoute = (path("call") & parameters('atFloor, 'to ! "UP")).as(Call(_: Int, Up))
+      val callDown: EventRoute = (path("call") & parameters('atFloor, 'to ! "DOWN")).as(Call(_: Int, Down))
       val go: EventRoute = (path("go") & parameters('floorToGo)).as(Go)
       val entered: EventRoute = path("userHasEntered") & provide(UserHasEntered: Event)
       val exited: EventRoute =  path("userHasExited") & provide(UserHasExited: Event)
