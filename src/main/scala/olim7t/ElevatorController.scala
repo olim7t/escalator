@@ -32,6 +32,8 @@ object ElevatorController {
     def drop1(floor: Int) = Task(floor, toDrop = 1)
   }
 
+  val MinFloor = 0
+  val MaxFloor = 5
   case class State(floor: Int, doors: DoorStatus, pendingTasks: List[Task])
 
   def defaultState = State(0, Close, List())
@@ -132,10 +134,6 @@ object ElevatorController {
       if taskFloor == currentFloor && toDrop > 0 || toPick > 0 =>
       Open
 
-    case State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _)
-      if taskFloor == currentFloor && toDrop == 0 || toPick == 0 =>
-      Nothing
-
     case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _)
       if taskFloor == currentFloor && toDrop == 0 && toPick == 0 =>
       Close
@@ -157,7 +155,30 @@ object ElevatorController {
       Nothing
   }
   
-  def step(oldState: State, command: Command): State =
-    // nb: close removes finished task
-    ???
+  def step(state: State, command: Command): State = (state, command) match {
+    case (_, Nothing) =>
+      state
+
+    case (State(floorBefore, _, _), Up) if floorBefore < MaxFloor =>
+      state.copy(floor = floorBefore + 1)
+
+    case (State(floorBefore, _, _), Down) if floorBefore > MinFloor =>
+      state.copy(floor = floorBefore - 1)
+
+    case (
+      State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _),
+      Open
+    ) if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
+      state.copy(doors = Open)
+
+    case (
+      State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: otherTasks),
+      Close
+    ) if taskFloor == currentFloor && toDrop == 0 && toPick == 0 =>
+      state.copy(doors = Close, pendingTasks = otherTasks)
+
+    case _ =>
+      log.error(s"Don't know how to apply ${command} to ${state}")
+      state
+  }
 }
