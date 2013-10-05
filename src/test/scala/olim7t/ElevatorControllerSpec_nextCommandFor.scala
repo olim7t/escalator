@@ -41,13 +41,23 @@ class ElevatorControllerSpec_nextCommandFor extends WordSpec
       nextCommandFor(state) must be === Nothing
     }
 
-    "go up when the next task is on an upper floor" in {
+    "go up when the next task is to drop someone at an upper floor" in {
       val state = State(1, Close, List(Task.drop1(4)))
       nextCommandFor(state) must be === Up
     }
 
-    "go down when the next task is on a lower floor" in {
+    "go up when the next task is to pick someone at an upper floor" in {
+      val state = State(1, Close, List(Task(2, 0, 1, Some(Up)), Task(5, 1, 0, None)))
+      nextCommandFor(state) must be === Up
+    }
+
+    "go down when the next task is to drop someone at a lower floor" in {
       val state = State(4, Close, List(Task.drop1(1)))
+      nextCommandFor(state) must be === Down
+    }
+
+    "go down when the next task is to pick someone at a lower floor" in {
+      val state = State(4, Close, List(Task.pick1(1, Up)))
       nextCommandFor(state) must be === Down
     }
   }

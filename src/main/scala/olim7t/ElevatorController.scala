@@ -131,7 +131,7 @@ object ElevatorController {
     case State(_, _, List()) => Nothing
 
     case State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _)
-      if taskFloor == currentFloor && toDrop > 0 || toPick > 0 =>
+      if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
       Open
 
     case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _)
@@ -139,7 +139,7 @@ object ElevatorController {
       Close
 
     case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _)
-      if taskFloor == currentFloor && toDrop > 0 || toPick > 0 =>
+      if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
       Nothing
 
     case State(currentFloor, Close, Task(taskFloor, _, _, _) :: _)
