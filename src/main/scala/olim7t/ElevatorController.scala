@@ -78,13 +78,14 @@ object ElevatorController {
     ) if targetFloor == currentFloor && toDropBefore > 0 => {
       task.copy(toDrop = toDropBefore - 1) :: otherTasks
     }
-    // get call from target floor. We merge even if the call in the opposite direction,
+    // get call from target floor. We merge even if the call is in the opposite direction,
     // because we have no way to prevent the other user to get in
     case (
-      (task@Task(targetFloor, _, toPickBefore, Some(targetDirection))) :: otherTasks,
-      Call(callFloor, _)
+      (task@Task(targetFloor, _, toPickBefore, targetDirection)) :: otherTasks,
+      Call(callFloor, callDirection)
       ) if callFloor == targetFloor => {
-      task.copy(toPick = toPickBefore + 1) :: otherTasks
+      val newDirection = targetDirection orElse Some(callDirection)
+      task.copy(toPick = toPickBefore + 1, direction = newDirection) :: otherTasks
     }
     // get call from intermediate floor in the same direction
     case (
