@@ -11,9 +11,9 @@ class ElevatorControllerSpec_step extends WordSpec
 
   "The elevator controller's step method" must {
 
-    "return the same state when doing nothing" in {
+    "increment the inactivity counter when doing nothing" in {
       val state = State(1, Close, List(Task.drop1(5)))
-      step(state, Nothing) must be === state
+      step(state, Nothing) must be === state.copy(inactiveSince = 1)
     }
 
     "increment the floor number when going up" in {

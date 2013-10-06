@@ -23,6 +23,10 @@ trait ElevatorController {
 object ElevatorController {
   val log = org.slf4j.LoggerFactory.getLogger(classOf[ElevatorController])
 
+  val MinFloor = 0
+  val MaxFloor = 5
+  val MaxInactivity = 10
+
   case class Task(floor: Int, toDrop: Int = 0, toPick: Int = 0, direction: Option[Direction] = None) {
     require((toPick == 0) ^ direction.isDefined)
   }
@@ -31,10 +35,7 @@ object ElevatorController {
     def pick2(floor: Int, direction: Direction) = Task(floor, toPick = 2, direction = Some(direction))
     def drop1(floor: Int) = Task(floor, toDrop = 1)
   }
-
-  val MinFloor = 0
-  val MaxFloor = 5
-  case class State(floor: Int, doors: DoorStatus, pendingTasks: List[Task])
+  case class State(floor: Int, doors: DoorStatus, pendingTasks: List[Task], inactiveSince: Int = 0)
 
   def defaultState = State(0, Close, List())
 
@@ -42,7 +43,7 @@ object ElevatorController {
     case Reset(message) =>
       log.error(s"Resetting because ${message}")
       defaultState
-    case _ =>
+    case _ if oldState.inactiveSince < MaxInactivity =>
       val newTasks = insert(event, oldState.floor, oldState.pendingTasks)
       oldState.copy(pendingTasks = newTasks)
   }
@@ -137,25 +138,28 @@ object ElevatorController {
   }
 
   def nextCommandFor(state: State): Command = state match {
-    case State(_, _, List()) => Nothing
+    // if we've been inactive for too long, keep sending the same command to trigger a reset from the server
+    case State(_, _, _, MaxInactivity) => Open
 
-    case State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _)
+    case State(_, _, List(), _) => Nothing
+
+    case State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _, _)
       if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
       Open
 
-    case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _)
+    case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _, _)
       if taskFloor == currentFloor && toDrop == 0 && toPick == 0 =>
       Close
 
-    case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _)
+    case State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: _, _)
       if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
       Nothing
 
-    case State(currentFloor, Close, Task(taskFloor, _, _, _) :: _)
+    case State(currentFloor, Close, Task(taskFloor, _, _, _) :: _, _)
       if taskFloor > currentFloor =>
       Up
 
-    case State(currentFloor, Close, Task(taskFloor, _, _, _) :: _)
+    case State(currentFloor, Close, Task(taskFloor, _, _, _) :: _, _)
       if taskFloor < currentFloor =>
       Down
 
@@ -165,29 +169,32 @@ object ElevatorController {
   }
   
   def step(state: State, command: Command): State = (state, command) match {
-    case (_, Nothing) =>
+    case (State(_, _, _, MaxInactivity), _) =>
       state
 
-    case (State(floorBefore, _, _), Up) if floorBefore < MaxFloor =>
-      state.copy(floor = floorBefore + 1)
+    case (_, Nothing) =>
+      state.copy(inactiveSince = state.inactiveSince + 1)
 
-    case (State(floorBefore, _, _), Down) if floorBefore > MinFloor =>
-      state.copy(floor = floorBefore - 1)
+    case (State(floorBefore, _, _, _), Up) if floorBefore < MaxFloor =>
+      state.copy(floor = floorBefore + 1, inactiveSince = 0)
+
+    case (State(floorBefore, _, _, _), Down) if floorBefore > MinFloor =>
+      state.copy(floor = floorBefore - 1, inactiveSince = 0)
 
     case (
-      State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _),
+      State(currentFloor, Close, Task(taskFloor, toDrop, toPick, _) :: _, _),
       Open
     ) if taskFloor == currentFloor && (toDrop > 0 || toPick > 0) =>
-      state.copy(doors = Open)
+      state.copy(doors = Open, inactiveSince = 0)
 
     case (
-      State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: otherTasks),
+      State(currentFloor, Open, Task(taskFloor, toDrop, toPick, _) :: otherTasks, _),
       Close
     ) if taskFloor == currentFloor && toDrop == 0 && toPick == 0 =>
-      state.copy(doors = Close, pendingTasks = otherTasks)
+      state.copy(doors = Close, pendingTasks = otherTasks, inactiveSince = 0)
 
     case _ =>
       log.error(s"Don't know how to apply ${command} to ${state}")
-      state
+      state.copy(inactiveSince = state.inactiveSince + 1)
   }
 }
