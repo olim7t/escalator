@@ -48,6 +48,14 @@ object ElevatorController {
   }
 
   private def insert(event: Event, currentFloor: Int, tasks: List[Task]): List[Task] = (tasks, event) match {
+    // Temporary workaround for https://github.com/xebia-france/code-elevator/issues/13
+    case (
+      (task@Task(targetFloor, 0, 0, None)) :: otherTasks,
+      Call(callFloor, _)
+    ) if targetFloor == currentFloor && callFloor == targetFloor => {
+      task :: insert(event, currentFloor, otherTasks)
+    }
+
     // get call when no pending task
     case (
       List(),

@@ -195,19 +195,25 @@ class ElevatorControllerSpec_register extends WordSpec
 
     "going down to drop someone at floor 0" must {
       "merge a pickup at floor 0 to go up" in {
-        val event = Call(0, Up)
         val state = State(5, Close, List(Task(0, 1, 0, None)))
-        register(state, event) must be ===
+        register(state, Call(0, Up)) must be ===
           State(5, Close, List(Task(0, 1, 1, Some(Up))))
       }
     }
 
     "going up to drop someone at floor 5" must {
       "merge a pickup at floor 5 to go down" in {
-        val event = Call(5, Down)
         val state = State(5, Close, List(Task(5, 1, 0, None)))
-        register(state, event) must be ===
+        register(state, Call(5, Down)) must be ===
           State(5, Close, List(Task(5, 1, 1, Some(Down))))
+      }
+    }
+
+    "at floor 2 with doors open" must {
+      "enqueue a call from the same floor" in {
+        val state = State(2, Open, List(Task(2, 0, 0, None), Task(5, 2, 0, None)))
+        register(state, Call(2, Up)) must be ===
+          State(2, Open, List(Task(2, 0, 0, None), Task(2, 0, 1, Some(Up)), Task(5, 2, 0, None)))
       }
     }
   }
