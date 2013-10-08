@@ -216,5 +216,31 @@ class ElevatorControllerSpec_register extends WordSpec
           State(2, Open, List(Task(2, 0, 0, None), Task(2, 0, 1, Some(Up)), Task(5, 2, 0, None)))
       }
     }
+
+    "inserting task at an intermediate floor" must {
+      "merge a call with a call from the same floor further down the list" in {
+        val state = State(4, Close, List(Task(5, 2, 0, None),
+                                         Task(0, 0, 1, Some(Up)),
+                                         Task(1, 0, 1, Some(Up))
+        ), 0)
+        register(state, Call(1, Down)) must be ===
+          State(4, Close, List(Task(5, 2, 0, None),
+            Task(0, 0, 1, Some(Up)),
+            Task(1, 0, 2, Some(Up))
+          ), 0)
+      }
+
+      "merge a press with a call from the same floor further down the list" in {
+        val state = State(4, Close, List(Task(5, 2, 0, None),
+                                         Task(0, 0, 1, Some(Up)),
+                                         Task(1, 0, 1, Some(Up))
+                                    ), 0)
+        register(state, Go(1)) must be ===
+          State(4, Close, List(Task(5, 2, 0, None),
+                               Task(0, 0, 1, Some(Up)),
+                               Task(1, 1, 1, Some(Up))
+                          ), 0)
+      }
+    }
   }
 }

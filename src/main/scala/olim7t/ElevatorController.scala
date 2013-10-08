@@ -96,6 +96,27 @@ object ElevatorController {
       val newDirection = targetDirection orElse Some(callDirection)
       task.copy(toPick = toPickBefore + 1, direction = newDirection) :: otherTasks
     }
+    // get press to target floor
+    case (
+      (task@Task(targetFloor, toDropBefore, _, _)) :: otherTasks,
+      Go(goFloor)
+    ) if goFloor == targetFloor => {
+      task.copy(toDrop = toDropBefore + 1) :: otherTasks
+    }
+    // get call from a floor that is already in the list, but not as immediate target
+    case (
+      (task@Task(targetFloor, _, _, _)) :: otherTasks,
+      Call(callFloor, _)
+      ) if otherTasks.exists(_.floor == callFloor) => {
+      task :: insert(event, targetFloor, otherTasks)
+    }
+    // get press from a floor that is already in the list, but not as immediate target
+    case (
+      (task@Task(targetFloor, _, _, _)) :: otherTasks,
+      Go(callFloor)
+    ) if otherTasks.exists(_.floor == callFloor) => {
+      task :: insert(event, targetFloor, otherTasks)
+    }
     // get call from intermediate floor in the same direction
     case (
       Task(targetFloor, _, _, _) :: otherTasks,
@@ -117,13 +138,6 @@ object ElevatorController {
          targetFloor < goFloor && goFloor <= currentFloor => {
       Task.drop1(goFloor) :: tasks
     }
-    // get press to target floor
-    case (
-      (task@Task(targetFloor, toDropBefore, _, _)) :: otherTasks,
-      Go(goFloor)
-    ) if goFloor == targetFloor => {
-      task.copy(toDrop = toDropBefore + 1) :: otherTasks
-    }
 
     // recurse to insert further down the list
     case (
@@ -134,6 +148,22 @@ object ElevatorController {
     }
     case _ =>
       log.error(s"Inconsistent state when inserting: ${event}, floor=${currentFloor}, ${tasks}")
+      tasks
+  }
+
+  // Prepends an event but handles the case where the same floor appears in the tail of the list
+  private def prepend(newTask: Task, tasks: List[Task]) = tasks.partition(_.floor == newTask.floor) match {
+    case (Nil, _) =>
+      newTask :: tasks
+    // The other task already has a direction, otherwise it would not be after
+    case (List(sameFloor@Task(_, _, _, Some(_))), otherFloors) =>
+      val merged = newTask.copy(
+        toDrop = newTask.toDrop + sameFloor.toDrop,
+        toPick = newTask.toPick + sameFloor.toPick
+      )
+      merged :: otherFloors
+    case _ => // many others with the same floor
+      log.error(s"Inconsistent state when prepending: ${newTask}, ${tasks}")
       tasks
   }
 
