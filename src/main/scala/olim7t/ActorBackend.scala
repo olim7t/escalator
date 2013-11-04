@@ -40,5 +40,6 @@ class Responder(requestContext: RequestContext, elevator: ActorRef) extends Acto
     // We want to make sure that we don't return a command before the previous event was processed.
     case EventAck =>
       requestContext.complete(OK)
+      self ! PoisonPill
   }
 }
